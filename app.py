@@ -21,6 +21,11 @@ with open('data/resources.json') as f:
     resources_json = json.load(f)
 
 
+def write_json(data, filename='data/resources.json'):
+    with open(filename, 'w') as f_:
+        json.dump(data, f, indent=4)
+
+
 def contribute(user_id: str, channel: str):
     # Create a new onboarding tutorial.
     contribute_msg = Contribute(channel)
@@ -49,13 +54,22 @@ def message(payload):
     if text.startswith('!'):
         alises_cmds = ['cmd', 'cmds', 'commands', 'help']
         alises_links = ['links', 'link', 'resources']
-        aliases_newlink = ['createlink', 'newlink', 'makelink', 'newresource', 'nl']
+        aliases_newlink = ['createlink', 'newlink', 'makelink', 'newresource', 'al', 'addlink']
         aliases_removelink = ['removelink', 'rl', 'deletelink', 'removeresource']
 
-        cmd = text[1:].lower()
+        # getting command & its args
+        cmds = text[1:].lower()
+        cmds = cmds.split()
+        cmd = cmds[0]
+
         if cmd == 'contribute':
+            # contribute msg
             return contribute(user_id, channel_id)
+        elif cmd in alises_cmds:
+            # print all available bot commands
+            pass
         elif cmd in resources_json:
+            # prints a specific link
             try:
                 response = client.chat_postMessage(
                     channel=channel_id,
@@ -64,13 +78,11 @@ def message(payload):
             except SlackApiError as e:
                 # You will get a SlackApiError if "ok" is False
                 assert e.response["error"]  # str like 'invalid_auth', 'channel_not_found'
-        elif cmd in alises_cmds:
-            pass
         elif cmd in alises_links:
+            # prints all links
             text = ''
             for item in resources_json:
                 text += f'*{item}*: <{resources_json[item]}>\n'
-
             try:
                 response = client.chat_postMessage(
                     channel=channel_id,
@@ -80,6 +92,14 @@ def message(payload):
                 # You will get a SlackApiError if "ok" is False
                 assert e.response["error"]  # str like 'invalid_auth', 'channel_not_found'
         elif cmd in aliases_newlink:
+            # enable people to be able to add links through an `!al [title] [link]` command
+            #resources_json[cmds[1]] = cmds[2]
+            #y = f'{cmds[1]}:{cmds[2]}'
+            #temp.append(y)
+            #write_json(resources_json)
+            pass
+        elif cmd in aliases_removelink:
+            # enable people to delete links in the json through `!rl [title] [link]` command
             pass
 
 
