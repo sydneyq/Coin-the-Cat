@@ -4,19 +4,21 @@ from flask import Flask
 from slack import WebClient
 from slackeventsapi import SlackEventAdapter
 from contribute import Contribute
+import resources
+import json
 
 # Initialize a Flask app to host the events adapter
+from slack.errors import SlackApiError
+
 app = Flask(__name__)
 slack_events_adapter = SlackEventAdapter(os.environ["SLACK_SIGNING_SECRET"], "/slack/events", app)
 
 # Initialize a Web API client
 slack_web_client = WebClient(token=os.environ['SLACK_BOT_TOKEN'])
+client = slack_web_client
 
-"""
-# For simplicity we'll store our app data in-memory with the following data structure.
-# onboarding_tutorials_sent = {"channel": {"user_id": OnboardingTutorial}}
-onboarding_tutorials_sent = {}
-"""
+with open('data/resources.json') as f:
+    resources_json = json.load(f)
 
 
 def contribute(user_id: str, channel: str):
@@ -29,6 +31,64 @@ def contribute(user_id: str, channel: str):
     # Post the onboarding message in Slack
     response = slack_web_client.chat_postMessage(**message)
 
+
+# ============== Message Events ============= #
+# When a user sends a DM, the event type will be 'message'.
+# Here we'll link the message callback to the 'message' event.
+@slack_events_adapter.on("message")
+def message(payload):
+    """Display the onboarding welcome message after receiving a message
+    that contains "start".
+    """
+    event = payload.get("event", {})
+
+    channel_id = event.get("channel")
+    user_id = event.get("user")
+    text = event.get("text")
+
+    if text.startswith('!'):
+        alises_cmds = ['cmd', 'cmds', 'commands', 'help']
+        alises_links = ['links', 'link', 'resources']
+        aliases_newlink = ['createlink', 'newlink', 'makelink', 'newresource', 'nl']
+        aliases_removelink = ['removelink', 'rl', 'deletelink', 'removeresource']
+
+        cmd = text[1:].lower()
+        if cmd == 'contribute':
+            return contribute(user_id, channel_id)
+        elif cmd in resources_json:
+            try:
+                response = client.chat_postMessage(
+                    channel=channel_id,
+                    text=resources_json[cmd]
+                )
+            except SlackApiError as e:
+                # You will get a SlackApiError if "ok" is False
+                assert e.response["error"]  # str like 'invalid_auth', 'channel_not_found'
+        elif cmd in alises_cmds:
+            pass
+        elif cmd in alises_links:
+            text = ''
+            for item in resources_json:
+                text += f'*{item}*: <{resources_json[item]}>\n'
+
+            try:
+                response = client.chat_postMessage(
+                    channel=channel_id,
+                    text=text
+                )
+            except SlackApiError as e:
+                # You will get a SlackApiError if "ok" is False
+                assert e.response["error"]  # str like 'invalid_auth', 'channel_not_found'
+        elif cmd in aliases_newlink:
+            pass
+
+
+if __name__ == "__main__":
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(logging.StreamHandler())
+    app.run(port=3000)
+
 """
 # ============= Reaction Added Events ============= #
 # When a users adds an emoji reaction to the onboarding message,
@@ -36,7 +96,7 @@ def contribute(user_id: str, channel: str):
 # Here we'll link the update_emoji callback to the 'reaction_added' event.
 @slack_events_adapter.on("reaction_added")
 def update_emoji(payload):
-    
+
     event = payload.get("event", {})
 
     channel_id = event.get("item", {}).get("channel")
@@ -60,29 +120,3 @@ def update_emoji(payload):
     # Update the timestamp saved on the onboarding tutorial object
     onboarding_tutorial.timestamp = updated_message["ts"]
 """
-
-# ============== Message Events ============= #
-# When a user sends a DM, the event type will be 'message'.
-# Here we'll link the message callback to the 'message' event.
-@slack_events_adapter.on("message")
-def message(payload):
-    """Display the onboarding welcome message after receiving a message
-    that contains "start".
-    """
-    event = payload.get("event", {})
-
-    channel_id = event.get("channel")
-    user_id = event.get("user")
-    text = event.get("text")
-
-    if text.startswith('!'):
-        cmd = text[1:].lower()
-        if cmd == "contribute":
-            return contribute(user_id, channel_id)
-
-
-if __name__ == "__main__":
-    logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
-    logger.addHandler(logging.StreamHandler())
-    app.run(port=3000)
