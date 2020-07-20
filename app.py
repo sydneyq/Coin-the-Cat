@@ -82,7 +82,7 @@ def message(payload):
             # prints all links
             text = ''
             for item in resources_json:
-                text += f'*{item}*: <{resources_json[item]}>\n'
+                text += f'> *{item}*: {resources_json[item]}\n'
             try:
                 response = client.chat_postMessage(
                     channel=channel_id,
