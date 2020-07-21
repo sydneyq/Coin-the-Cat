@@ -50,6 +50,7 @@ def message(payload):
     channel_id = event.get("channel")
     user_id = event.get("user")
     text = event.get("text")
+    thread_ts = event.get("ts")
 
     if text.startswith('!'):
         alises_cmds = ['cmd', 'cmds', 'commands', 'help']
@@ -73,7 +74,8 @@ def message(payload):
             try:
                 response = client.chat_postMessage(
                     channel=channel_id,
-                    text=resources_json[cmd]
+                    text=resources_json[cmd],
+                    thread_ts=thread_ts
                 )
             except SlackApiError as e:
                 # You will get a SlackApiError if "ok" is False
@@ -81,22 +83,24 @@ def message(payload):
         elif cmd in alises_links:
             # prints all links
             text = ''
-            for item in resources_json:
-                text += f'> *{item}*: {resources_json[item]}\n'
+
             try:
+                for item in resources_json:
+                    text += f'> *{item}*: {resources_json[item]}\n'
                 response = client.chat_postMessage(
                     channel=channel_id,
-                    text=text
+                    text=text,
+                    thread_ts=thread_ts
                 )
             except SlackApiError as e:
                 # You will get a SlackApiError if "ok" is False
                 assert e.response["error"]  # str like 'invalid_auth', 'channel_not_found'
         elif cmd in aliases_newlink:
             # enable people to be able to add links through an `!al [title] [link]` command
-            #resources_json[cmds[1]] = cmds[2]
-            #y = f'{cmds[1]}:{cmds[2]}'
-            #temp.append(y)
-            #write_json(resources_json)
+            # resources_json[cmds[1]] = cmds[2]
+            # y = f'{cmds[1]}:{cmds[2]}'
+            # temp.append(y)
+            # write_json(resources_json)
             pass
         elif cmd in aliases_removelink:
             # enable people to delete links in the json through `!rl [title] [link]` command
