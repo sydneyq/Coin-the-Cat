@@ -97,10 +97,10 @@ def message(payload):
                 assert e.response["error"]  # str like 'invalid_auth', 'channel_not_found'
         elif cmd in aliases_newlink:
             # enable people to be able to add links through an `!al [title] [link]` command
-            # resources_json[cmds[1]] = cmds[2]
-            # y = f'{cmds[1]}:{cmds[2]}'
-            # temp.append(y)
-            # write_json(resources_json)
+            resources_json[cmds[1]] = cmds[2]
+            y = f'{cmds[1]}:{cmds[2]}'
+            temp.append(y)
+            write_json(resources_json)
             pass
         elif cmd in aliases_removelink:
             # enable people to delete links in the json through `!rl [title] [link]` command
